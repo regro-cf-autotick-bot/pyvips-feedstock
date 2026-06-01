@@ -7,9 +7,6 @@
 # fails, will fall back to ABI mode, ie. directly opening the libvips shared
 # library and calling into it with cffi.
 
-# Skip win since libvips is not packaged for conda there. It is blocked on
-# at least gdk-pixbuf.
-
 {% set name = "pyvips" %}
 {% set version = "3.1.1" %}
 
@@ -22,12 +19,17 @@ source:
   sha256: 1ab3c901fb9ae2221eef4b2258cddbaf52af30fc6d6023d610ebbe7cd94d3aff
 
 build:
-  number: 0
+  number: 1
+  script_env:
+    # Switch default pkg-config implementation to pkgconf
+    # https://github.com/conda-forge/conda-forge.github.io/issues/1880
+    - PKG_CONFIG=pkgconf
   script:
+    # Allow pkg-config to find xproto.pc
+    - export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$PREFIX/share/pkgconfig"  # [linux]
     # Ensure we can find the vips package
-    - pkg-config --exists --print-errors vips
+    - pkgconf --exists --print-errors vips
     - {{ PYTHON }} -m pip install . --no-deps --ignore-installed -vv
-  skip: true  # [win]
   ignore_run_exports:
     # We need to pull in metapackages for these below to get devel files, but
     # don't depend on these libraries directly:
@@ -37,7 +39,7 @@ requirements:
   build:
     - {{ compiler('c') }}
     - {{ stdlib('c') }}
-    - pkg-config                          # [not win]
+    - pkgconf
     - python                              # [build_platform != target_platform]
     - cross-python_{{ target_platform }}  # [build_platform != target_platform]
     - cffi >=1.0                          # [build_platform != target_platform]
@@ -48,11 +50,15 @@ requirements:
     - pip
     - setuptools >=61
     - cffi >=1.0
-    - pkgconfig >=1.5                     # [not win]
-    - libvips
-    - glib
     # Needed for devel files (e.g. pkg-config):
     - expat
+    - freetype
+    - glib
+    - libvips
+    - libxml2-devel
+    - pkgconfig >=1.5
+    # needed to find OpenSlide on Linux
+    # https://github.com/conda-forge/xorg-libx11-feedstock/issues/51
     - xorg-xorgproto                      # [linux]
   run:
     - python
@@ -70,11 +76,12 @@ test:
 
 about:
   home: https://github.com/libvips/pyvips
+  dev_url: https://github.com/libvips/pyvips
+  doc_url: https://libvips.github.io/pyvips
   license: MIT
   license_family: MIT
   license_file: LICENSE.txt
   summary: Binding for libvips
-  doc_url: https://libvips.github.io/pyvips/
 
 extra:
   recipe-maintainers:
