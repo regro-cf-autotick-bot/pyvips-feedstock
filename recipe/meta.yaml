@@ -8,7 +8,7 @@
 # library and calling into it with cffi.
 
 {% set name = "pyvips" %}
-{% set version = "3.1.1" %}
+{% set version = "3.2.0" %}
 
 package:
   name: {{ name|lower }}
@@ -16,10 +16,10 @@ package:
 
 source:
   url: https://github.com/libvips/{{ name }}/archive/v{{ version }}.tar.gz
-  sha256: 1ab3c901fb9ae2221eef4b2258cddbaf52af30fc6d6023d610ebbe7cd94d3aff
+  sha256: 3a503a14a84c2b7de6c347c9f4e7c706d98c7077c1d63a38bb5b5470a4c233a1
 
 build:
-  number: 1
+  number: 0
   script_env:
     # Switch default pkg-config implementation to pkgconf
     # https://github.com/conda-forge/conda-forge.github.io/issues/1880
