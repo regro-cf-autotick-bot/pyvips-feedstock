@@ -15,7 +15,7 @@ glib:
 libvips:
 - '8'
 libxml2_devel:
-- '2.14'
+- '2.15'
 pin_run_as_build:
   python:
     min_pin: x.x
