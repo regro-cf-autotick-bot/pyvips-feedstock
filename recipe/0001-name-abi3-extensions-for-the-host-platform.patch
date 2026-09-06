@@ -1,0 +1,74 @@
+From 675e7958769b96b0f11f16bb830c2648a6ca83a7 Mon Sep 17 00:00:00 2001
+From: Mark Harfouche <mark.harfouche@gmail.com>
+Date: Sun, 6 Sep 2026 10:38:14 -0400
+Subject: [PATCH] Name abi3 extensions for the host platform when cross
+ compiling
+
+setuptools derives the abi3 extension suffix from
+importlib.machinery.EXTENSION_SUFFIXES, i.e. from the interpreter that
+runs the build rather than from the host sysconfig.
+
+Since Python 3.15 that suffix carries the platform triplet
+(https://github.com/python/cpython/issues/122931), so a cross compiled
+extension is written as _libvips.abi3-x86_64-linux-gnu.so on a
+x86_64 -> ppc64le build. The object is a correct ppc64le shared library,
+but the host interpreter does not recognise the suffix:
+
+    ModuleNotFoundError: No module named '_libvips'. Although a module
+    with this name was found for a different Python version
+    (_libvips.abi3-x86_64-linux-gnu.so).
+
+Rebuild the triplet from sysconfig, which does describe the host. The
+substitution only rewrites a suffix that already carries a triplet, so
+it is a no-op on Python <= 3.14, on macOS and Windows, and on native
+builds.
+---
+ setup.py | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/setup.py b/setup.py
+index 331453c..9ca29bc 100644
+--- a/setup.py
++++ b/setup.py
+@@ -1,7 +1,10 @@
++import re
+ import sys
++import sysconfig
+ 
+ from os import path
+ from setuptools import setup
++from setuptools.command.build_ext import build_ext
+ 
+ base_dir = path.dirname(__file__)
+ src_dir = path.join(base_dir, 'pyvips')
+@@ -10,13 +13,29 @@ src_dir = path.join(base_dir, 'pyvips')
+ # means that we need to add the pyvips/ directory to the sys.path.
+ sys.path.insert(0, src_dir)
+ 
++
++class build_ext_abi3(build_ext):
++    # setuptools takes the abi3 suffix from the interpreter that runs the
++    # build. Since Python 3.15 that suffix carries the platform triplet
++    # (https://github.com/python/cpython/issues/122931), so when cross
++    # compiling the extension is named for the build machine and cannot be
++    # imported on the host. Take the triplet from the host sysconfig instead.
++    def get_ext_filename(self, fullname):
++        filename = super().get_ext_filename(fullname)
++        platform = sysconfig.get_config_var('SOABI_PLATFORM')
++        if platform:
++            filename = re.sub(r'\.abi3-[^.]+\.', f'.abi3-{platform}.', filename)
++        return filename
++
++
+ # Try to install in API mode first, then if that fails, fall back to ABI
+ 
+ # API mode requires a working C compiler plus all the libvips headers whereas
+ # ABI only needs the libvips shared library to be on the system
+ 
+ try:
+-    setup(cffi_modules=['pyvips/pyvips_build.py:ffibuilder'])
++    setup(cffi_modules=['pyvips/pyvips_build.py:ffibuilder'],
++          cmdclass={'build_ext': build_ext_abi3})
+ except Exception as e:
+     print(f'Falling back to ABI mode. Details: {e}')
+     setup()

@@ -17,6 +17,8 @@ package:
 source:
   url: https://github.com/libvips/{{ name }}/archive/v{{ version }}.tar.gz
   sha256: 3a503a14a84c2b7de6c347c9f4e7c706d98c7077c1d63a38bb5b5470a4c233a1
+  patches:
+    - 0001-name-abi3-extensions-for-the-host-platform.patch
 
 build:
   number: 1
